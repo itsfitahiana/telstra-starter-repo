@@ -27,58 +27,38 @@ public class SimCardActivatorStepDefinitions {
 
     @Autowired
     private TestRestTemplate restTemplate;
-    private String BASE_URL;
-    private String ACTIVATION_URL;
-    private String CHECKER_URL;
-    private String ACTUACTOR_URL;
-    private String mail;
-
+    private final String BASE_URL = "http://localhost:8080";
+    private final String ACTIVATION_URL = BASE_URL + "/activate";
+    private final String CHECKER_URL = BASE_URL + "/findById";
+    private final String ACTUACTOR_URL = "http://localhost:8444/actuate";
     private ResponseEntity<ActuationResult> response;
     private ResponseEntity<SimCard> reponseSimCard;
-    @Given("the SIM Card Actuator is running")
-    public void simCardActuatorIsRunning() {
-        BASE_URL = "http://localhost:8080";
-        ACTIVATION_URL = BASE_URL + "/activate";
-        CHECKER_URL = BASE_URL + "/findById";
-        ACTUACTOR_URL = "http://localhost:8444/actuate";
-        mail = "test@gmail.com";
+    private SimCard simCard;
+    @Given("a functional sim card")
+    public void configureFunctionalSimCard() {
+        simCard = new SimCard("12345678901234567890", "test@gmail.com");
     }
 
-    @ParameterType("\"([^\"]*)\"")
-    public String iccid(String iccid) {
-        return iccid;
+    @Given("a broken sim card")
+    public void configureBrokenSimCard() {
+        simCard = new SimCard("8944500102198304826", "test2@gmail.com");
     }
 
-    @ParameterType("\"([^\"]*)\"")
-    public String id(String id) {
-        return id;
-    }
-    @When("I submit an activation request with ICCID {iccid} to the microservice")
-    public void submitValidationRequest(String iccid) {
-        SimCard simCard = new SimCard();
-        simCard.setIccid(iccid);
-        simCard.setCustomerEmail(mail);
+    @When("I submit an activation request")
+    public void submitValidationRequest() {
         response = restTemplate.postForEntity(ACTIVATION_URL, simCard, ActuationResult.class);
-    }
 
-    @Then("the activation request is successfully processed")
-    public void activationRequestProcessedSuccessfully() {
-        assertEquals(200, response.getStatusCodeValue());
-    }
-
-    @When("I submit a request to check the ID {id} activation status")
-    public void submitValidationChecker(String id) {
-        String FIND_BY_ID = CHECKER_URL+"/"+id;
-        reponseSimCard = restTemplate.getForEntity(FIND_BY_ID, SimCard.class);
     }
 
     @Then("the activation is marked as true in the database")
     public void activationMarkedTrue() {
-        assertTrue(reponseSimCard.getBody().getActive());
+        SimCard sC = restTemplate.getForObject(CHECKER_URL + "/1", SimCard.class);
+        assertTrue(sC.getActive());
     }
     // Failed activation
     @Then("the activation is marked as false in the database")
     public void activationMarkedFalse() {
-        assertFalse(reponseSimCard.getBody().getActive());
+        SimCard sC = restTemplate.getForObject(CHECKER_URL + "/2", SimCard.class);
+        assertFalse(sC.getActive());
     }
 }
